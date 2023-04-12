@@ -11,9 +11,8 @@ import UIKit
 final class ViewModel {
     
     lazy var people: [Person] = []
-    
     private var next: String?
-
+    
     lazy var title = "People"
     lazy var noOneHereText = "No one here but me :)"
     lazy var noOneLeftText = "This is the end :("
@@ -29,7 +28,7 @@ final class ViewModel {
     //Fetch people from data source
     public func fetchPeople(isRefresh: Bool = false, _ completion: @escaping (Bool) -> Void) {
         guard !isLoading else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .background).async {
             self.isLoading = true
             if isRefresh { self.next = nil ; self.didReachedEnd = false }
             DataSource.fetch(next: self.next) { response, error in
@@ -41,9 +40,8 @@ final class ViewModel {
                         self.didReachedEnd = true
                     }
                     self.isLoading = false
-                    self.checkIDsAndAppend(isRefresh: isRefresh, response.people) {
-                        completion(true)
-                    }
+                    self.checkIDsAndAppend(isRefresh: isRefresh, response.people)
+                    completion(true)
                 } else if let error { //Error
                     debugPrint(error.errorDescription)
                     self.delegate?.handleError(error: error.errorDescription, end: false)
@@ -55,7 +53,7 @@ final class ViewModel {
     }
     
     //Controlling duplicating IDs.
-    private func checkIDsAndAppend(isRefresh: Bool, _ people: [Person], _ completion: @escaping () -> Void) {
+    private func checkIDsAndAppend(isRefresh: Bool, _ people: [Person]) {
         guard !isCheckingIDs else { return }
         if isRefresh { self.people.removeAll() }
         self.isCheckingIDs = true
@@ -67,7 +65,6 @@ final class ViewModel {
         
         self.appendMe()
         self.isCheckingIDs = false
-        completion()
     }
     
     //Appending myself :)

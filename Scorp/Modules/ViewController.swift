@@ -24,48 +24,44 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.setup()
-        self.viewModel.fetchPeople { success in
-                self.loadingCompleted(success)
+        self.setup() //Main thread
+        self.viewModel.fetchPeople { [weak self] success in
+            guard let self = self else { return }
+            self.loadingCompleted(success)
         }
     }
     
     private func setup() {
-        DispatchQueue.main.async {
-            self.viewModel.delegate = self
-            self.navigationItem.title = self.viewModel.title
-            self.setupTableView()
-            self.noOneHereLabel = UILabel()
-            self.noOneHereLabel.frame = self.view.frame
-            self.noOneHereLabel.text = self.viewModel.noOneHereText
-            self.noOneHereLabel.textAlignment = .center
-            self.view.addSubview(self.noOneHereLabel)
-        }
+        //debugPrint("Thread \(Thread.isMainThread)")
+        self.viewModel.delegate = self
+        self.navigationItem.title = self.viewModel.title
+        self.setupTableView()
+        self.noOneHereLabel = UILabel()
+        self.noOneHereLabel.frame = self.view.frame
+        self.noOneHereLabel.text = self.viewModel.noOneHereText
+        self.noOneHereLabel.textAlignment = .center
+        self.view.addSubview(self.noOneHereLabel)
     }
     
     private func setupTableView() {
-        DispatchQueue.main.async {
-            self.peopleTable = UITableView(frame: self.view.bounds)
-            self.view.addSubview(self.peopleTable)
-            self.peopleTable.delegate = self
-            self.peopleTable.dataSource = self
-            self.peopleTable.register(self.viewModel.cellNib, forCellReuseIdentifier: PeopleCell.id)
-            self.refreshControl = UIRefreshControl()
-            self.refreshControl.attributedTitle = NSAttributedString(string: "Pull to refresh")
-            self.refreshControl.addTarget(self, action: #selector(self.refresh(_:)), for: .valueChanged)
-            self.peopleTable.addSubview(self.refreshControl)
-            self.setupActivityIndicator()
-        }
+        self.peopleTable = UITableView(frame: self.view.bounds)
+        self.view.addSubview(self.peopleTable)
+        self.peopleTable.delegate = self
+        self.peopleTable.dataSource = self
+        self.peopleTable.register(self.viewModel.cellNib, forCellReuseIdentifier: PeopleCell.id)
+        self.refreshControl = UIRefreshControl()
+        self.refreshControl.attributedTitle = NSAttributedString(string: "Pull to refresh")
+        self.refreshControl.addTarget(self, action: #selector(self.refresh(_:)), for: .valueChanged)
+        self.peopleTable.addSubview(self.refreshControl)
+        self.setupActivityIndicator()
     }
     
     private func setupActivityIndicator() {
-        DispatchQueue.main.async {
-            self.activityIndicator = UIActivityIndicatorView(frame: self.view.frame)
-            self.activityIndicator.style = .large
-            self.activityIndicator.color = .label
-            self.activityIndicator.startAnimating()
-            self.view.addSubview(self.activityIndicator)
-        }
+        self.activityIndicator = UIActivityIndicatorView(frame: self.view.frame)
+        self.activityIndicator.style = .large
+        self.activityIndicator.color = .label
+        self.activityIndicator.startAnimating()
+        self.view.addSubview(self.activityIndicator)
     }
     
     private func loadingCompleted(_ success: Bool) {
@@ -94,7 +90,8 @@ class ViewController: UIViewController {
             return
         }
         //Timeout...
-        self.timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false, block: { timer in
+        self.timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false, block: { [weak self] timer in
+            guard let self = self else { return }
             if self.refreshControl.isRefreshing {
                 self.refreshControl.endRefreshing()
                 self.handleError(error: "Time Out", end: false)
@@ -123,9 +120,7 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
         if indexPath.row == viewModel.people.count - 6 &&
             !viewModel.isLoading &&
             !viewModel.didReachedEnd { //Fetch more people.
-            DispatchQueue.main.async {
-                tableView.reloadData()
-            }
+            
             viewModel.fetchPeople { success in
                 self.loadingCompleted(success)
             }
